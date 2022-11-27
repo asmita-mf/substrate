@@ -41,6 +41,6 @@ mockall::mock! {
 		fn service(&self) -> Box<dyn ImportQueueService<B>>;
 		fn service_ref(&mut self) -> &mut dyn ImportQueueService<B>;
 		fn poll_actions<'a>(&mut self, cx: &mut futures::task::Context<'a>, link: &mut dyn Link<B>);
-		async fn run(self, link: Box<dyn Link<B>>);
+		async fn run(self, link: std::sync::Arc<dyn Link<B> + Send + Sync>);
 	}
 }

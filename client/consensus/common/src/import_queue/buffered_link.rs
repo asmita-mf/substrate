@@ -88,7 +88,7 @@ pub enum BlockImportWorkerMsg<B: BlockT> {
 
 impl<B: BlockT> Link<B> for BufferedLinkSender<B> {
 	fn blocks_processed(
-		&mut self,
+		&self,
 		imported: usize,
 		count: usize,
 		results: Vec<(BlockImportResult<B>, B::Hash)>,
@@ -99,7 +99,7 @@ impl<B: BlockT> Link<B> for BufferedLinkSender<B> {
 	}
 
 	fn justification_imported(
-		&mut self,
+		&self,
 		who: RuntimeOrigin,
 		hash: &B::Hash,
 		number: NumberFor<B>,
@@ -109,7 +109,7 @@ impl<B: BlockT> Link<B> for BufferedLinkSender<B> {
 		let _ = self.tx.unbounded_send(msg);
 	}
 
-	fn request_justification(&mut self, hash: &B::Hash, number: NumberFor<B>) {
+	fn request_justification(&self, hash: &B::Hash, number: NumberFor<B>) {
 		let _ = self
 			.tx
 			.unbounded_send(BlockImportWorkerMsg::RequestJustification(*hash, number));
@@ -123,7 +123,7 @@ pub struct BufferedLinkReceiver<B: BlockT> {
 
 impl<B: BlockT> BufferedLinkReceiver<B> {
 	/// Send action for the synchronization to perform.
-	pub fn send_actions(&mut self, msg: BlockImportWorkerMsg<B>, link: &mut dyn Link<B>) {
+	pub fn send_actions(&mut self, msg: BlockImportWorkerMsg<B>, link: &dyn Link<B>) {
 		match msg {
 			BlockImportWorkerMsg::BlocksProcessed(imported, count, results) =>
 				link.blocks_processed(imported, count, results),
@@ -142,7 +142,7 @@ impl<B: BlockT> BufferedLinkReceiver<B> {
 	/// it is as if this method always returned `Poll::Pending`.
 	///
 	/// Returns an error if the corresponding [`BufferedLinkSender`] has been closed.
-	pub fn poll_actions(&mut self, cx: &mut Context, link: &mut dyn Link<B>) -> Result<(), ()> {
+	pub fn poll_actions(&mut self, cx: &mut Context, link: &dyn Link<B>) -> Result<(), ()> {
 		loop {
 			let msg = match Stream::poll_next(Pin::new(&mut self.rx), cx) {
 				Poll::Ready(Some(msg)) => msg,
@@ -150,12 +150,12 @@ impl<B: BlockT> BufferedLinkReceiver<B> {
 				Poll::Pending => break Ok(()),
 			};
 
-			self.send_actions(msg, &mut *link);
+			self.send_actions(msg, &*link);
 		}
 	}
 
 	/// Poll next element from import queue and send the corresponding action command over the link.
-	pub async fn next_action(&mut self, link: &mut dyn Link<B>) -> Result<(), ()> {
+	pub async fn next_action(&mut self, link: &dyn Link<B>) -> Result<(), ()> {
 		if let Some(msg) = self.rx.next().await {
 			self.send_actions(msg, link);
 			return Ok(())

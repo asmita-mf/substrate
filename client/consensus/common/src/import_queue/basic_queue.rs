@@ -187,7 +187,7 @@ impl<B: BlockT, Transaction: Send> ImportQueue<B> for BasicQueue<B, Transaction>
 	///
 	/// Takes an object implementing [`Link`] which allows the import queue to
 	/// influece the synchronization process.
-	async fn run(mut self, mut link: Box<dyn Link<B>>) {
+	async fn run(mut self, mut link: std::sync::Arc<dyn Link<B> + Send + Sync>) {
 		loop {
 			if let Err(_) = self.result_port.next_action(&mut *link).await {
 				log::error!(target: "sync", "poll_actions: Background import task is no longer alive");

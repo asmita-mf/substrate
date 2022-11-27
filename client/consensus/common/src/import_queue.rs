@@ -137,7 +137,7 @@ pub trait ImportQueue<B: BlockT>: Send {
 	///
 	/// Takes an object implementing [`Link`] which allows the import queue to
 	/// influece the synchronization process.
-	async fn run(self, link: Box<dyn Link<B>>);
+	async fn run(self, link: std::sync::Arc<dyn Link<B> + Send + Sync>);
 }
 
 /// Hooks that the verification queue can use to influence the synchronization
@@ -145,7 +145,7 @@ pub trait ImportQueue<B: BlockT>: Send {
 pub trait Link<B: BlockT>: Send {
 	/// Batch of blocks imported, with or without error.
 	fn blocks_processed(
-		&mut self,
+		&self,
 		_imported: usize,
 		_count: usize,
 		_results: Vec<(BlockImportResult<B>, B::Hash)>,
@@ -154,7 +154,7 @@ pub trait Link<B: BlockT>: Send {
 
 	/// Justification import result.
 	fn justification_imported(
-		&mut self,
+		&self,
 		_who: RuntimeOrigin,
 		_hash: &B::Hash,
 		_number: NumberFor<B>,
@@ -163,7 +163,7 @@ pub trait Link<B: BlockT>: Send {
 	}
 
 	/// Request a justification for the given block.
-	fn request_justification(&mut self, _hash: &B::Hash, _number: NumberFor<B>) {}
+	fn request_justification(&self, _hash: &B::Hash, _number: NumberFor<B>) {}
 }
 
 /// Block import successful result.

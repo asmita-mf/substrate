@@ -852,7 +852,7 @@ where
 
 	// TODO(aaro): expose `config.network` through common crate
 	let (chain_sync_network_provider, chain_sync_network_handle) = NetworkServiceProvider::new();
-	let (engine, chain_sync_service, block_announce_config) = SyncingEngine::new(
+	let (engine, sync_service, block_announce_config) = SyncingEngine::new(
 		Roles::from(&config.role),
 		client.clone(),
 		config.prometheus_config.as_ref().map(|config| config.registry.clone()).as_ref(),
@@ -939,8 +939,7 @@ where
 		chain: client.clone(),
 		protocol_id: protocol_id.clone(),
 		fork_id: config.chain_spec.fork_id().map(ToOwned::to_owned),
-		// engine,
-		chain_sync_service: Box::new(chain_sync_service.clone()),
+		sync_service: sync_service.clone(),
 		metrics_registry: config.prometheus_config.as_ref().map(|config| config.registry.clone()),
 		block_announce_config,
 		request_response_protocol_configs: request_response_protocol_configs
@@ -973,12 +972,12 @@ where
 	let has_bootnodes = !network_params.network_config.boot_nodes.is_empty();
 	let network_mut = sc_network::NetworkWorker::new(network_params)?;
 	let network = network_mut.service().clone();
-	let sync_service = chain_sync_service.clone();
+	let sync_service = sync_service.clone();
 
 	let (tx_handler, tx_handler_controller) = transactions_handler_proto.build(
 		network.clone(),
 		// TODO(aaro): wrap chainsyncinterface into an arc
-		Arc::new(chain_sync_service.clone()),
+		Arc::new(sync_service.clone()),
 		Arc::new(TransactionPoolAdapter { pool: transaction_pool, client: client.clone() }),
 		config.prometheus_config.as_ref().map(|config| &config.registry),
 	)?;
@@ -989,7 +988,7 @@ where
 		Some("networking"),
 		chain_sync_network_provider.run(network.clone()),
 	);
-	spawn_handle.spawn("import-queue", None, import_queue.run(Box::new(sync_service)));
+	spawn_handle.spawn("import-queue", None, import_queue.run(sync_service.clone()));
 
 	let event_stream = network.event_stream("syncing");
 	spawn_handle.spawn("syncing", None, engine.run(event_stream));
@@ -1001,7 +1000,7 @@ where
 		network_mut,
 		client,
 		system_rpc_rx,
-		Arc::new(chain_sync_service.clone()),
+		sync_service.clone(),
 		has_bootnodes,
 		config.announce_block,
 	);
@@ -1047,7 +1046,7 @@ where
 		system_rpc_tx,
 		tx_handler_controller,
 		NetworkStarter(network_start_tx),
-		Arc::new(chain_sync_service),
+		sync_service,
 	))
 }
 
