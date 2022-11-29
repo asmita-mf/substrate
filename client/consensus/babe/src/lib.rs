@@ -372,9 +372,11 @@ impl Config {
 		} else if version == Some(2) {
 			runtime_api.configuration(&best_block_id)?
 		} else {
-			return Err(sp_blockchain::Error::VersionInvalid(
-				"Unsupported or invalid BabeApi version".to_string(),
-			))
+			info!("Babe configuratio is null at line 375" );
+			runtime_api.configuration(&best_block_id)?
+			// return Err(sp_blockchain::Error::VersionInvalid(
+			// 	"Unsupported or invalid BabeApi version".to_string(),
+			// ))
 		};
 
 		Ok(Config { genesis_config })
